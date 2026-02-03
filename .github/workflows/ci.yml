@@ -20,7 +20,10 @@ jobs:
           tools: composer:v2
 
       - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist
+        run: |
+          cp .env.example .env
+          echo "BROADCAST_CONNECTION=log" >> .env
+          composer install --no-interaction --prefer-dist
 
       - name: Prepare environment
         run: |
