@@ -26,6 +26,9 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'updated_at', type: 'string', format: 'date-time'),
     ],
 )]
+/**
+ * @mixin \App\Models\Template
+ */
 class TemplateResource extends JsonResource
 {
     /**
@@ -35,13 +38,16 @@ class TemplateResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        /** @var \App\Models\Template $template */
+        $template = $this->resource;
+
         return [
-            'id' => $this->id,
-            'name' => $this->name,
-            'channel' => $this->channel->value,
-            'body' => $this->body,
-            'created_at' => $this->created_at?->toISOString(),
-            'updated_at' => $this->updated_at?->toISOString(),
+            'id' => $template->id,
+            'name' => $template->name,
+            'channel' => $template->channel->value,
+            'body' => $template->body,
+            'created_at' => $template->created_at?->toISOString(),
+            'updated_at' => $template->updated_at?->toISOString(),
         ];
     }
 }

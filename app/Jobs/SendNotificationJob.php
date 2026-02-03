@@ -5,7 +5,6 @@ namespace App\Jobs;
 use App\Enums\NotificationStatus;
 use App\Events\NotificationStatusChanged;
 use App\Models\Notification;
-use App\Jobs\SyncNotificationStatusJob;
 use App\Services\Notifications\DTOs\SendRequest;
 use App\Services\Notifications\ProviderRegistry;
 use App\Services\Notifications\StatusQueryableProviderInterface;
@@ -18,6 +17,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\RateLimiter;
 use RuntimeException;
 use Throwable;
+
 use function event;
 
 class SendNotificationJob implements ShouldQueue
@@ -33,9 +33,7 @@ class SendNotificationJob implements ShouldQueue
      */
     public array $backoff = [5, 15, 60, 180, 600];
 
-    public function __construct(public Notification $notification)
-    {
-    }
+    public function __construct(public Notification $notification) {}
 
     public function handle(ProviderRegistry $registry, TemplateSafetyValidator $validator, TemplateRenderer $renderer): void
     {
@@ -50,7 +48,7 @@ class SendNotificationJob implements ShouldQueue
         }
 
         if ($notification->status === NotificationStatus::Scheduled && $notification->scheduled_at?->isFuture()) {
-            $this->release($notification->scheduled_at->diffInSeconds(now()));
+            $this->release((int) $notification->scheduled_at->diffInSeconds(now()));
 
             return;
         }

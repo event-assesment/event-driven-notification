@@ -20,6 +20,7 @@ class NotificationFactory extends Factory
      */
     public function definition(): array
     {
+        /** @var NotificationChannel $channel */
         $channel = fake()->randomElement(NotificationChannel::cases());
         $to = match ($channel) {
             NotificationChannel::Sms => '+1'.fake()->numerify('##########'),

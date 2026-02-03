@@ -22,6 +22,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use OpenApi\Attributes as OA;
+
 use function event;
 
 class NotificationController extends Controller
@@ -350,6 +351,7 @@ class NotificationController extends Controller
         if ($correlationId === '') {
             $correlationId = (string) Str::uuid();
         }
+        /** @var array<int, array<string, mixed>> $notificationsPayload */
         $notificationsPayload = $payload['notifications'];
 
         if ($idempotencyKey !== null) {

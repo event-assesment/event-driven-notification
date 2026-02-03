@@ -10,10 +10,22 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property NotificationChannel $channel
+ * @property NotificationPriority $priority
+ * @property NotificationStatus $status
+ * @property array<string, mixed>|null $variables
+ * @property \Illuminate\Support\Carbon|null $scheduled_at
+ * @property \Illuminate\Support\Carbon|null $accepted_at
+ * @property \Illuminate\Support\Carbon|null $delivered_at
+ * @property \Illuminate\Support\Carbon|null $last_status_check_at
+ * @property \Illuminate\Support\Carbon|null $next_status_check_at
+ */
 class Notification extends Model
 {
     /** @use HasFactory<\Database\Factories\NotificationFactory> */
     use HasFactory;
+
     use HasUuids;
 
     public $incrementing = false;
@@ -62,6 +74,9 @@ class Notification extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<Template, $this>
+     */
     public function template(): BelongsTo
     {
         return $this->belongsTo(Template::class);

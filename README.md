@@ -246,7 +246,7 @@ ws://localhost:8080
 Clients subscribe to:
 
 ```none
-private-batch.{batchId}
+batch.{batchId}
 ```
 
 Event:

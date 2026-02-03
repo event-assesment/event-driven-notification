@@ -27,7 +27,8 @@ it('creates a notification and dispatches a job', function () {
 
     $response
         ->assertCreated()
-        ->assertJsonStructure(['id', 'batch_id', 'status']);
+        ->assertJsonStructure(['id', 'batch_id', 'status'])
+        ->assertJsonPath('status', NotificationStatus::Queued->value);
 
     $notification = Notification::query()->first();
 

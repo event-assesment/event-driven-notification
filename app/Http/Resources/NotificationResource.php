@@ -53,6 +53,9 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'updated_at', type: 'string', format: 'date-time'),
     ],
 )]
+/**
+ * @mixin \App\Models\Notification
+ */
 class NotificationResource extends JsonResource
 {
     /**
@@ -62,27 +65,30 @@ class NotificationResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        /** @var \App\Models\Notification $notification */
+        $notification = $this->resource;
+
         return [
-            'id' => $this->id,
-            'batch_id' => $this->batch_id,
-            'template_id' => $this->template_id,
-            'to' => $this->to,
-            'channel' => $this->channel->value,
-            'content' => $this->content,
-            'variables' => $this->variables,
-            'priority' => $this->priority->value,
-            'status' => $this->status->value,
-            'provider_message_id' => $this->provider_message_id,
-            'attempts' => $this->attempts,
-            'last_error' => $this->last_error,
-            'correlation_id' => $this->correlation_id,
-            'scheduled_at' => $this->scheduled_at?->toISOString(),
-            'accepted_at' => $this->accepted_at?->toISOString(),
-            'delivered_at' => $this->delivered_at?->toISOString(),
-            'last_status_check_at' => $this->last_status_check_at?->toISOString(),
-            'next_status_check_at' => $this->next_status_check_at?->toISOString(),
-            'created_at' => $this->created_at?->toISOString(),
-            'updated_at' => $this->updated_at?->toISOString(),
+            'id' => $notification->id,
+            'batch_id' => $notification->batch_id,
+            'template_id' => $notification->template_id,
+            'to' => $notification->to,
+            'channel' => $notification->channel->value,
+            'content' => $notification->content,
+            'variables' => $notification->variables,
+            'priority' => $notification->priority->value,
+            'status' => $notification->status->value,
+            'provider_message_id' => $notification->provider_message_id,
+            'attempts' => $notification->attempts,
+            'last_error' => $notification->last_error,
+            'correlation_id' => $notification->correlation_id,
+            'scheduled_at' => $notification->scheduled_at?->toISOString(),
+            'accepted_at' => $notification->accepted_at?->toISOString(),
+            'delivered_at' => $notification->delivered_at?->toISOString(),
+            'last_status_check_at' => $notification->last_status_check_at?->toISOString(),
+            'next_status_check_at' => $notification->next_status_check_at?->toISOString(),
+            'created_at' => $notification->created_at?->toISOString(),
+            'updated_at' => $notification->updated_at?->toISOString(),
         ];
     }
 }
