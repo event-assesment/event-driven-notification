@@ -1,59 +1,422 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# **Event-Driven Notification System**
 
 <p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
+
+![Web Console UI](screenshot.png)
+
 </p>
 
-## About Laravel
+<p align="center"><b>
+Playground Web UI
+</b></p>
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Overview
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+This repository implements a scalable, event-driven notification platform that processes and delivers messages across multiple channels (**SMS, Email, Push**) with:
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+* Asynchronous processing via **Redis queues**
+* Per-channel **rate limiting**
+* **Priority queues** (`high`, `normal`, `low`)
+* Intelligent retries with **exponential backoff**
+* Explicit **Accepted ≠ Delivered** status model
+* **Pluggable provider adapters + capability interfaces (OOP)**
+* **Provider webhooks (delivery receipts)**
+* Automatic “unknown” marking for stale accepted messages (**TTL**)
+* Real-time updates via **Laravel Reverb (WebSockets)**
+* Secure, sandboxed **Blade template system**
+* Full **Swagger/OpenAPI documentation**
+* **Docker Compose** one-command setup
+* Automated tests (**Pest**) + **GitHub Actions CI**
+* A **Playground Web UI** for interactive demo and manual testing
 
-## Learning Laravel
+This project was built to satisfy all core requirements of the Insider One assessment while implementing all major bonus features.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+---
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Assessment Alignment
 
-## Laravel Sponsors
+| Requirement             | Implementation                                                                     |
+| ----------------------- | ---------------------------------------------------------------------------------- |
+| Async processing        | Redis queues + dedicated workers                                                   |
+| Rate limiting           | Configurable per channel                                                           |
+| Priority queues         | Separate queues: `notifications-high`, `notifications-normal`, `notifications-low` |
+| Batch creation          | Up to 1000 per request                                                             |
+| Cancel pending          | Supported                                                                          |
+| Filtering + pagination  | Supported                                                                          |
+| Template system         | Blade (safe subset)                                                                |
+| WebSockets              | Laravel Reverb                                                                     |
+| Scheduled notifications | Supported                                                                          |
+| Delivery & Retry        | Exponential backoff                                                                |
+| Observability           | Metrics + health + structured logs                                                 |
+| Distributed tracing     | Correlation IDs                                                                    |
+| Docker Compose          | One-command setup                                                                  |
+| Swagger/OpenAPI         | Included                                                                           |
+| Tests                   | Runnable with one command                                                          |
+| CI/CD                   | GitHub Actions included                                                            |
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+---
 
-### Premium Partners
+## High-Level Architecture
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+```none
+[Playground UI / API Clients]
+             │
+             ▼
+        [Laravel API]
+             │
+             ▼
+        [MySQL + Redis]
+             │
+             ▼
+        [Redis Queues]
+      ┌──────────────────────┐
+      │                      │
+[notifications-high]   [notifications.status_sync]
+[notifications-normal]
+[notifications-low]
+      │                      │
+      ▼                      ▼
+SendNotificationJob   SyncNotificationStatusJob
+      │                      │
+      ▼                      │
+[Provider Adapter] ◀─────────┘ (polling, if supported)
+      │
+      ▼
+[Provider Webhook (Delivery Receipt)]
+      │
+      ▼
+[Reverb WebSocket Broadcast]
+```
 
-## Contributing
+---
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Status Lifecycle (Accepted ≠ Delivered)
 
-## Code of Conduct
+We explicitly model the distinction between provider acceptance and final delivery.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Typical lifecycle:
 
-## Security Vulnerabilities
+```none
+pending → queued → sending → accepted → (delivered | failed)
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Special cases:
 
-## License
+* `scheduled` → later enters queue
+* `accepted` older than TTL (default 24h) → `unknown`
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+> **accepted** = provider received the request (e.g., HTTP 202)
+> **delivered/failed** = confirmed via provider callback (delivery receipt)
+
+---
+
+## Provider Architecture (Adapter + Capability Pattern)
+
+Providers are pluggable and selected per channel via a registry.
+
+Core interfaces:
+
+```php
+interface NotificationProviderInterface {
+    public function send(SendRequest $request): SendResult;
+    public function name(): string;
+}
+
+interface DeliveryReceiptHandlerInterface {
+    public function verify(array $headers, string $rawBody): void;
+    public function parse(string $rawBody): DeliveryReceiptDTO;
+}
+
+interface StatusQueryableProviderInterface {
+    public function fetchStatus(string $providerMessageId): ProviderStatusDTO;
+}
+```
+
+### Default Provider: `WebhookSiteProvider`
+
+Included for assessment simulation. It implements:
+
+* `NotificationProviderInterface`
+* `DeliveryReceiptHandlerInterface`
+
+> **Note:** It does *not* implement `StatusQueryableProviderInterface`, so reconciliation polling only applies if a provider with that capability is added.
+
+---
+
+## Delivery Receipts (Provider Callbacks)
+
+Endpoint:
+
+```none
+POST /api/providers/{provider}/callbacks
+```
+
+Example payload (simulated):
+
+```json
+{
+  "message_id": "provider-message-id-here",
+  "status": "delivered",
+  "timestamp": "2026-02-03T10:00:00Z"
+}
+```
+
+Or failure:
+
+```json
+{
+  "message_id": "provider-message-id-here",
+  "status": "failed",
+  "timestamp": "2026-02-03T10:00:00Z",
+  "error": {
+    "code": "DELIVERY_FAILED",
+    "message": "Simulated failure"
+  }
+}
+```
+
+Features:
+
+* Optional provider signature verification
+* Idempotent processing
+* Immediate WebSocket broadcast on status change
+
+> The **Playground UI** includes a **“Simulate Callback”** button that triggers this endpoint automatically.
+
+---
+
+## Automatic Reconciliation (Self-Healing)
+
+If a notification is `accepted` but **no receipt arrives within 5 minutes**, and the provider supports polling:
+
+* System calls `fetchStatus(providerMessageId)`
+* Backoff: `5m → 15m → 60m → 6h`
+* After **24 hours** → status becomes `unknown`
+
+This runs on a dedicated queue: **`notifications.status_sync`**
+
+---
+
+## Playground Web UI
+
+The project includes a browser-based **Event-Driven Notification Console** where you can:
+
+* View paginated notifications with live status updates via WebSocket integration
+* Filter by status, channel, priority, and date range
+* Create new notifications (single or batch)
+* Use templates with variables
+* Simulate provider callbacks
+* Fetch metrics and run health checks
+* Open Swagger documentation
+
+**URL:** [http://localhost:8000/](http://localhost:8000/)
+
+---
+
+## Template System (Blade — Safe Subset)
+
+Allowed:
+
+* `@if`, `@elseif`, `@else`, `@endif`
+* `@foreach`, `@endforeach`
+* `@isset`, `@endisset`
+
+Forbidden:
+
+* `@php`
+* `{!! !!}`
+* `@include`, `@extends`, `@component`, `@inject`
+
+Validate templates via:
+
+```none
+POST /api/templates/validate
+```
+
+---
+
+## 📡 WebSockets (Laravel Reverb)
+
+WebSocket server runs at:
+
+```none
+ws://localhost:8080
+```
+
+Clients subscribe to:
+
+```none
+private-batch.{batchId}
+```
+
+Event:
+
+```none
+notification.status.changed
+```
+
+---
+
+## Observability
+
+### Metrics
+
+```none
+GET /api/metrics
+```
+
+Example:
+
+```json
+{
+  "queue_depth": 245,
+  "success_last_minute": 1200,
+  "failed_last_minute": 12,
+  "avg_latency_ms": 230
+}
+```
+
+### Health
+
+```none
+GET /health
+```
+
+---
+
+## Local Setup (Docker — One Command)
+
+### 1) Copy environment
+
+```bash
+cp .env.example .env
+```
+
+### 2) Start everything
+
+```bash
+docker compose up -d --build
+```
+
+Services started:
+
+| Service          | Port                                           |
+| ---------------- | ---------------------------------------------- |
+| API + Playground | [http://localhost:8000](http://localhost:8000) |
+| Reverb WS        | ws://localhost:8080                            |
+| MySQL            | 3306                                           |
+| Redis            | 6379                                           |
+
+> The `app` container automatically runs migrations and seeders on startup.
+
+---
+
+## Swagger / OpenAPI
+
+Visit:
+
+```none
+http://localhost:8000/api/documentation
+```
+
+---
+
+## Run Tests
+
+```bash
+docker compose exec app php artisan test --compact
+```
+
+---
+
+## Important ENV Variables
+
+```env
+WEBHOOK_SITE_URL=https://webhook.site/your-uuid
+NOTIFICATIONS_RATE_LIMIT=100
+NOTIFICATIONS_STATUS_SYNC_DELAYS=5,15,60,360
+NOTIFICATIONS_STATUS_SYNC_TTL_HOURS=24
+
+REVERB_HOST=reverb
+REVERB_PORT=8080
+QUEUE_CONNECTION=redis
+```
+
+---
+
+## Example API Calls
+
+### Create Single Notification
+
+```bash
+curl -X POST http://localhost:8000/api/notifications \
+-H "Content-Type: application/json" \
+-d '{
+  "to": "+905551234567",
+  "channel": "sms",
+  "content": "Hello from Insider assessment!",
+  "priority": "high"
+}'
+```
+
+### Create Batch
+
+```bash
+curl -X POST http://localhost:8000/api/notifications/batch \
+-H "Content-Type: application/json" \
+-d '{
+  "notifications": [
+    {"to":"+905551234567","channel":"sms","content":"A"},
+    {"to":"user@example.com","channel":"email","content":"B"}
+  ]
+}'
+```
+
+### Cancel
+
+```none
+POST /api/notifications/{id}/cancel
+```
+
+### List with Filters
+
+```none
+GET /api/notifications?status=failed&channel=sms&page=1
+```
+
+---none
+
+## Idempotency
+
+You may send:
+
+```none
+Idempotency-Key: your-key-here
+```
+
+to prevent duplicate notifications.
+
+---
+
+## CI/CD (GitHub Actions)
+
+Pipeline runs:
+
+* Composer install
+* SQLite-based migration setup
+* Pest tests
+* Laravel Pint
+* PHPStan (if configured)
+
+---
+
+## Why This Is Strong for Insider
+
+* Realistic production design
+* Clean OOP with provider adapters
+* Explicit accepted vs delivered modeling
+* Webhooks + reconciliation fallback
+* Live WebSockets
+* Safe templating
+* Docker + Swagger + tests
+* **Interactive Playground UI** for demonstration
