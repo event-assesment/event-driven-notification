@@ -1,0 +1,1031 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Event-driven Notification API",
+        "description": "API for creating, tracking, and validating notifications.",
+        "version": "1.0.0"
+    },
+    "paths": {
+        "/api/metrics": {
+            "get": {
+                "tags": [
+                    "Metrics"
+                ],
+                "summary": "Get recent notification metrics",
+                "operationId": "59f416cff6368ca54fd87b5ff8b10a03",
+                "responses": {
+                    "200": {
+                        "description": "Metrics snapshot.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "queue_depth": {
+                                            "type": "integer"
+                                        },
+                                        "success_last_minute": {
+                                            "type": "integer"
+                                        },
+                                        "failed_last_minute": {
+                                            "type": "integer"
+                                        },
+                                        "avg_latency_ms": {
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/notifications": {
+            "get": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "List notifications",
+                "operationId": "6d56a555955089a73fdf3f7229e8ead8",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "pending",
+                                "queued",
+                                "sending",
+                                "accepted",
+                                "delivered",
+                                "failed",
+                                "canceled",
+                                "scheduled",
+                                "unknown"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "channel",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "sms",
+                                "email",
+                                "push"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "priority",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "high",
+                                "normal",
+                                "low"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 100,
+                            "minimum": 1
+                        }
+                    },
+                    {
+                        "name": "created_from",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "created_to",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paged notifications list.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Notification"
+                                            }
+                                        },
+                                        "links": {
+                                            "type": "object"
+                                        },
+                                        "meta": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "additionalProperties": true
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Create a notification",
+                "operationId": "5e12e1940735be8dea4ffa6c52938048",
+                "parameters": [
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "description": "Optional key to ensure idempotent requests.",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreNotificationRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Notification created.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "id": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        },
+                                        "batch_id": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        },
+                                        "status": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error."
+                    }
+                }
+            }
+        },
+        "/api/notifications/{notification}": {
+            "get": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Get notification by id",
+                "operationId": "ea7eaa587ff4cfb9b97294857f2adbff",
+                "parameters": [
+                    {
+                        "name": "notification",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notification details.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Notification"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Notification not found."
+                    }
+                }
+            }
+        },
+        "/api/notifications/batch/{batchId}": {
+            "get": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "List notifications for a batch",
+                "operationId": "67442fa497bc44fc2dccf7c908069061",
+                "parameters": [
+                    {
+                        "name": "batchId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Batch notifications.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Notification"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error."
+                    }
+                }
+            }
+        },
+        "/api/notifications/batch": {
+            "post": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Create a batch of notifications",
+                "operationId": "d38101c0a7a9aa2e1b7b407acd7c5e5a",
+                "parameters": [
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "description": "Optional key to ensure idempotent batch requests.",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreBatchNotificationRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Batch created.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "batch_id": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Notification"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error."
+                    }
+                }
+            }
+        },
+        "/api/notifications/{notification}/cancel": {
+            "post": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Cancel a queued notification",
+                "operationId": "e963b9faee81d2192b1e37ecdfac7f5a",
+                "parameters": [
+                    {
+                        "name": "notification",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notification canceled.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Notification"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Notification not found."
+                    },
+                    "422": {
+                        "description": "Notification cannot be canceled."
+                    }
+                }
+            }
+        },
+        "/api/providers/{provider}/callbacks": {
+            "post": {
+                "tags": [
+                    "Providers"
+                ],
+                "summary": "Handle provider delivery callbacks",
+                "operationId": "16f9e86fa4f2c44dc473c69b8aa52f45",
+                "parameters": [
+                    {
+                        "name": "provider",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Callback accepted.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Callback verification failed."
+                    },
+                    "404": {
+                        "description": "Provider or notification not found."
+                    },
+                    "422": {
+                        "description": "Unsupported receipt status."
+                    }
+                }
+            }
+        },
+        "/api/templates": {
+            "get": {
+                "tags": [
+                    "Templates"
+                ],
+                "summary": "List templates",
+                "operationId": "e7bff3994948a3b495a185984da5e485",
+                "parameters": [
+                    {
+                        "name": "channel",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "sms",
+                                "email",
+                                "push"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 100,
+                            "minimum": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paged templates list.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Template"
+                                            }
+                                        },
+                                        "links": {
+                                            "type": "object"
+                                        },
+                                        "meta": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error."
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Templates"
+                ],
+                "summary": "Create a template",
+                "operationId": "b7aa5396b7d49d88a8b9a357701f3cee",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreTemplateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Template created.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Template"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error."
+                    }
+                }
+            }
+        },
+        "/api/templates/validate": {
+            "post": {
+                "tags": [
+                    "Templates"
+                ],
+                "summary": "Validate and render a template",
+                "operationId": "76c2c3be9f196d510e6a8c85858e6dc0",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TemplateValidationRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Template rendered.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "rendered": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error."
+                    }
+                }
+            }
+        },
+        "/api/templates/{template}": {
+            "get": {
+                "tags": [
+                    "Templates"
+                ],
+                "summary": "Get template by id",
+                "operationId": "ed6dce44f72216db9c0ab0a8daa9e37d",
+                "parameters": [
+                    {
+                        "name": "template",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Template details.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Template"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Template not found."
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Templates"
+                ],
+                "summary": "Delete a template",
+                "operationId": "cac7818682de619f7c6aa7dcdf74ed74",
+                "parameters": [
+                    {
+                        "name": "template",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Template deleted."
+                    },
+                    "404": {
+                        "description": "Template not found."
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "Templates"
+                ],
+                "summary": "Update a template",
+                "operationId": "f1d216346a9951c55b6b280f8bab682e",
+                "parameters": [
+                    {
+                        "name": "template",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateTemplateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Template updated.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Template"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error."
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "tags": [
+                    "Health"
+                ],
+                "summary": "Health check",
+                "operationId": "40f7b72539521da32bbfb658865d527d",
+                "responses": {
+                    "200": {
+                        "description": "Service is healthy.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "StoreBatchNotificationRequest": {
+                "required": [
+                    "notifications"
+                ],
+                "properties": {
+                    "notifications": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/StoreNotificationRequest"
+                        },
+                        "maxItems": 1000,
+                        "minItems": 1
+                    }
+                },
+                "type": "object"
+            },
+            "StoreNotificationRequest": {
+                "description": "Provide either content or template_id + variables.",
+                "required": [
+                    "to",
+                    "channel"
+                ],
+                "properties": {
+                    "to": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "channel": {
+                        "type": "string",
+                        "enum": [
+                            "sms",
+                            "email",
+                            "push"
+                        ]
+                    },
+                    "content": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "template_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "nullable": true
+                    },
+                    "variables": {
+                        "type": "object",
+                        "nullable": true,
+                        "additionalProperties": true
+                    },
+                    "priority": {
+                        "type": "string",
+                        "enum": [
+                            "high",
+                            "normal",
+                            "low"
+                        ]
+                    },
+                    "scheduled_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "StoreTemplateRequest": {
+                "required": [
+                    "name",
+                    "channel",
+                    "body"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "channel": {
+                        "type": "string",
+                        "enum": [
+                            "sms",
+                            "email",
+                            "push"
+                        ]
+                    },
+                    "body": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "TemplateValidationRequest": {
+                "required": [
+                    "body"
+                ],
+                "properties": {
+                    "body": {
+                        "type": "string"
+                    },
+                    "sample_variables": {
+                        "type": "object",
+                        "nullable": true,
+                        "additionalProperties": true
+                    }
+                },
+                "type": "object"
+            },
+            "UpdateTemplateRequest": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "channel": {
+                        "type": "string",
+                        "enum": [
+                            "sms",
+                            "email",
+                            "push"
+                        ]
+                    },
+                    "body": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "Notification": {
+                "required": [
+                    "id",
+                    "batch_id",
+                    "to",
+                    "channel",
+                    "priority",
+                    "status",
+                    "correlation_id",
+                    "created_at",
+                    "updated_at"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "batch_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "template_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "nullable": true
+                    },
+                    "to": {
+                        "type": "string"
+                    },
+                    "channel": {
+                        "type": "string",
+                        "enum": [
+                            "sms",
+                            "email",
+                            "push"
+                        ]
+                    },
+                    "content": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "variables": {
+                        "type": "object",
+                        "nullable": true,
+                        "additionalProperties": true
+                    },
+                    "priority": {
+                        "type": "string",
+                        "enum": [
+                            "high",
+                            "normal",
+                            "low"
+                        ]
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "pending",
+                            "queued",
+                            "sending",
+                            "accepted",
+                            "delivered",
+                            "failed",
+                            "canceled",
+                            "scheduled",
+                            "unknown"
+                        ]
+                    },
+                    "provider_message_id": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "attempts": {
+                        "type": "integer"
+                    },
+                    "last_error": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "correlation_id": {
+                        "type": "string"
+                    },
+                    "scheduled_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "accepted_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "delivered_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "last_status_check_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "next_status_check_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "Template": {
+                "required": [
+                    "id",
+                    "name",
+                    "channel",
+                    "body",
+                    "created_at",
+                    "updated_at"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "channel": {
+                        "type": "string",
+                        "enum": [
+                            "sms",
+                            "email",
+                            "push"
+                        ]
+                    },
+                    "body": {
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Notifications",
+            "description": "Notification lifecycle endpoints."
+        },
+        {
+            "name": "Templates",
+            "description": "Template management and validation endpoints."
+        },
+        {
+            "name": "Providers",
+            "description": "Provider callback endpoints."
+        },
+        {
+            "name": "Metrics",
+            "description": "Operational metrics endpoints."
+        },
+        {
+            "name": "Health",
+            "description": "Service health endpoint."
+        }
+    ]
+}
