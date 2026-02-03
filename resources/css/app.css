@@ -1,4 +1,45 @@
 @import 'tailwindcss';
+@import 'flatpickr/dist/flatpickr.css';
+
+@layer components {
+    .flatpickr-calendar {
+        @apply rounded-2xl border border-slate-900/10 bg-white shadow-2xl shadow-black/10;
+    }
+
+    .flatpickr-months .flatpickr-month {
+        @apply bg-white text-slate-900;
+    }
+
+    .flatpickr-weekdays {
+        @apply bg-slate-50;
+    }
+
+    .flatpickr-day {
+        @apply rounded-full text-slate-700;
+    }
+
+    .flatpickr-day.today {
+        @apply border-amber-400 text-amber-700;
+    }
+
+    .flatpickr-day.selected,
+    .flatpickr-day.startRange,
+    .flatpickr-day.endRange {
+        @apply bg-slate-900 text-white;
+    }
+
+    .flatpickr-time {
+        @apply border-t border-slate-900/10;
+    }
+
+    .flatpickr-wrapper {
+        width: 100%;
+    }
+
+    .flatpickr-input {
+        width: 100%;
+    }
+}
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
